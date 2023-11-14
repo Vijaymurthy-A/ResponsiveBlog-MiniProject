@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <title>Blog Page</title>
+        <meta name="description" content="This site contains top trending blogs">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="style.css">
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Sofia">
+        <link rel="icon" href="./images/favicon.ico">
+    </head>
+    <body> 
+        <header>
+            <nav>
+                <div class="navTitle">
+                     <a href="./index.html">SYSTEM DESIGN</a>
+                </div>
+                <div>
+                    <div class="searchDiv">
+                        <label for="search"></label>
+                        <input class="searchInput" type="search" name="query" id="search" onkeyup='searchQuery()' placeholder="Search Here">
+                        <div class="searchPopup" id="searchPopup">
+                            <!-- Display the search results -->
+                        </div>
+                    </div>
+                </div>
+            </nav>
+        </header>
+        <main>
+            <!-- <div id="nxtPrev" class="nxtPrev" id="navigationButton">
+                <div id="prev" class="prev">&#8249;</div>
+                <div id="next" class="next">&#8250;</div>
+            </div> -->
+            <section class="mainContent blog1" id="blog1">
+                <div class="pageHeading" id="title">
+                    <h1 title="blog1">DoorDash’s Write-Heavy Scalable Inventory Platform — System Design</h1>
+                    <div class="avatarBlog">
+                        <img class="avatar" src="./images/avatar1.jpg" alt="userImg">
+                        <p>8min read . Oct 4</p>
+                    </div>
+                </div>
+                <div class="blogText">
+                    <img class="blogPics" src="./images/systemArch.webp" alt="systemArch">
+                    As DoorDash made the move from made-to-order restaurant delivery into the Convenience and Grocery (CnG) business, they had to find a way to manage an online inventory per merchant per store that went from tens of items to tens of thousands of items.
+                    <br>
+                    <br>
+                    <div class="bg-lg">
+                        To solve this scaling problem their team built a write-heavy inventory platform that would be able to keep up with all the changes on the platform.
+                    </div>
+                    <br>
+                    <br>
+                    <strong>What We will Cover here</strong>
+                    <br>
+                    <ol>
+                        <li>Challenges Associated with Supporting CnG Inventory Management</li>
+                        <li>Technical Requirements of Their Ideal Inventory Platform</li>    
+                        <li>Functional Architecture</li>
+                        <li>Incremental Changes to the Solution after the MVP</li>    
+                        — Change Item-level API to Batch API
+                        <br>
+                        — Database Table Optimization
+                        <br>
+                        — Batch the DB Upsert within one 
+                        request to CockroachDB
+                        <li>Conclusion</li>
+                    </ol>
+                    <strong> Requirements of Their Ideal Inventory Platform</strong>
+                    <br>
+                    <ol>
+                        <li>
+                            <strong>High Scalability </strong>— As their business grows, the inventory platform needs to support more items that are added to the system. Frequent updates need to be supported so that inventory freshness is maintained
+                        </li>
+                        <li>
+                            <strong>High Scalability </strong>— their pipeline should be reliable so that all of the valid inventory update requests from merchants should eventually be processed successfully
+                        </li>
+                        <li>
+                            <strong>Low Latency  </strong>— the item data is time-sensitive, especially the price and availability attributes. The gap between receiving data from the merchant and displaying data to the customer should be as small as possible.
+                        </li>
+                        <li>
+                            <strong>High Observability  </strong>— The pipeline should have lots of validations and guardrails.
+                        </li>
+                    </ol>
+                    <br>
+                    <br>
+                    <strong>Functional Architecture</strong>
+                    <br>
+                    <br>
+                    To begin the technical discussion we will start with the high-level architecture of their inventory ingestion pipeline.
+                    <br>
+                    <br>
+                    Figure 1 shows a high-level design of their inventory ingestion pipeline, which is an asynchronous system ingesting inventory from multiple different sources, processing them, and passing them to downstream systems where the view is served to customer-facing entities.
+                    <br>
+                    <br>
+                    <img class="blogPics" src="./images/img1_blog1.webp" alt="architecture design"></img>
+                    In this piece, we will delve into the peculiarities of a well-humored architecture, DoppelGANger — yes, pun intended — recently added to the ydata-synthetic package and explore how we can use it to generate synthetic data from complex time series datasets.
+                    <br>
+                    <br>
+                    <ol>
+                        <li>
+                            <strong>
+                                API controller
+                            </strong>
+                            — their gRPC-based API controller acts as the entry point of inventory data to the platform.
+                        </li>
+                        <li>
+                            <strong>
+                                Raw Feed Persistence
+                            </strong>
+                            — Most of the inventory processing after the API controller is async and is executed via Cadence workflows.                                
+                        </li>
+                        <li>
+                            <strong>Hydration
+                            </strong>
+                            — the detailed view of a store item involves both inventory and catalog attributes. The inventory ingestion pipeline at DoorDash is responsible for hydrating (i.e. enriching) raw inventory information with catalog attributes.
+                        </li>
+                        <li>
+                            <strong>Price Calculation
+                            </strong>
+                            — they also rely on external configuration fetched from a dependent service to perform per-item price calculation as and when required.
+                        </li>
+                        <li>
+                            <strong>Out-of-stock Predictive Classification
+                            </strong>
+                            — implemented a predictive model that learns from historical order and INF (item-not-found) data and classifies whether an item can be available in-store or not.
+                        </li>
+                        <li>
+                            <strong>Guardrails
+                            </strong>
+                            — No pipeline is without errors caused due to code bugs in their own systems and/or issues in upstream systems. The inventory platform needs to establish best-effort guardrails (and alerting mechanisms) that can detect and restrict updates when certain conditions are met.
+                        </li>
+                        <li>
+                            <strong>Observability
+                            </strong>
+                            — It is very important to have full visibility into this pipeline at an item level as well as a store level (aggregated statistics). We need to know if an item was dropped due to some error in the pipeline, as that directly relates to the item not being available on the store page.
+                        </li>
+                    </ol>
+                    At the beginning of the implementation, put effort into creating an exhaustive metrics dashboard, so that when performance issues arise, it is easy to narrow down the bottleneck of the system. In general, having high visibility into the real-time system from the start can be very useful.
+                    <br>
+                    <br>
+                    Save data in a way that can help the read-and-write pattern. Inventory data may not be a flattened list of data — they may have a certain level of hierarchy. They could be saved as item-level or store-level, it is all about determining the read-and-write pattern for the service.
+                    <br>
+                    <br>
+                    Batch whenever possible in API and DB. Most of the time, when we update inventory, we would update a whole store’s or geolocation’s inventory. Either way, there are multiple items to update, so it’s best to try to batch the update instead of updating single items for each request or query.
+                    <br>
+                    <br>
+                    If the business unit allows asynchronous processing, make computations asynchronous and establish a strong SLA for job time per unit (i.e. store or item). Time for single-item processing includes time spent in network communication, which adds up when there are potentially billions of items to process.
+                    <br>
+                    <br>
+                    Instead, if we send the entire store’s inventory via one request, and on the server side use a blob storage to save the request payload, and process it asynchronously, then the client side can save the waiting time and the service can have high throughput.
+                    On this note, also establishes the idea that content will be updated in near-real time instead of real-time. Cadence is a good tool for processing near-real-time jobs and has many built-in features to improve system reliability and efficiency.
+                    <br>
+                    <br>
+                    <div class="tags">
+                        <p>Inventory Management</p>
+                        <p>System Design Interview</p>
+                        <p>Distributed System</p>
+                    </div>
+                    <br>
+                    <br>
+                </div> 
+            </section>
+            <section class="mainContent blog2" id="blog2">
+                <div class="pageHeading" id="title">
+                    <h1 title="blog2">Scaling Millions of Geospatial QPM Using Redis — Groupon System Design</h1>
+                    <div class="avatarBlog">
+                        <img class="avatar" src="./images/avatar2.jpg" alt="userImg">
+                        <p>8min read . Jun 16</p>
+                    </div>
+                </div>
+                <div class="blogText">
+                    <img class="blogPics" src="./images/img1_blog2.webp" alt="Redis Store">
+                    <br>
+                    <br>
+                    It’s fascinating to learn about how Groupon leverages Redis to enhance geospatial searches for its users. Utilizing Redis for geospatial indexing and search can significantly optimize the process of finding relevant deals based on location. This approach is critical when dealing with a high volume of queries and a need for low-latency responses.
+                    <br>
+                    <br>
+                    <strong>What we will cover here</strong>
+                    <ol>
+                        <li> Introduction</li>
+                        <li>How do Geospatial Queries work in Redis?</li>
+                        <li>How to index spatial entities?</li>
+                        <li>Points to Remember</li>
+                        <li>Why Use Redis?</li>
+                    </ol>
+                    <br>   
+                    <strong> Introduction</strong>
+                    <br>
+                    <br>
+                    Two primary types of geospatial searches are highlighted in this article:
+                    <br>
+                    <br>
+                    Find the Nearest Entity: This search type focuses on identifying the closest geospatial entity to a given location. It’s particularly useful when users want to find the nearest deals or points of interest based on their current location.
+                    <br>
+                    <br>
+                    Find All Nearby Entities within a Radius: This search involves identifying all geospatial entities within a specified distance from a given point. This functionality is valuable for users looking for a broader range of nearby deals or places of interest.
+                    <br>
+                    <br>
+                    <strong>How do Geospatial Queries work in Redis?</strong>
+                    <br>
+                    <ul>
+                        <li>
+                    
+                        Redis provides commands like GEOADD, GEORADIUS, GEORADIUSBYMEMBER, GEOSEARCH, and GEOSEARCHSTORE for geospatial indexing and searching.
+                        The spatial entities are stored in Sorted Sets using the coordinates to form 52-bit integers using the Geohash technique.
+                        </li>
+                        <br>
+                        <li>
+                        Let’s go through an example to see how the spatial entities can be indexed and searched. 
+                        </li>
+                        <br>
+                        <li>
+                        Redis-CLI commands are shown in these examples, though any Redis client can be used.
+                        </li>
+                    </ul>
+                    
+                    For the examples consider four places with the coordinates:
+                    
+                    <ul>
+                        <li>San Francisco (lat: 37.774, lng: -122.419)</li>
+                        <br>
+                        <li>Palo Alto (lat: 37.441, lng: -122.143)</li>
+                        <br>
+                        <li>Mountain View (lat: 37.386, lng: -122.083)</li>
+                        <br>
+                        <li>San Jose (lat: 37.338, lng: -121.886)</li>
+                        <br>
+                    </ul>
+                    <img class="blogPics" src="images/img2_blog2.webp" alt="maps">
+                    <br>
+                    <br>
+                    <strong>How to index spatial entities?</strong>
+                    <br>
+                    <br>
+                    GEOADD command can be used to index spatial entities in Redis. The time complexity for this command is O(log(N)) for each item added, where N is the number of elements in the sorted set.
+                    <br>
+                    <br>
+                    To add these 4 locations to the ‘places’ Redis keys, run the commands:
+                    <br>
+                    <br>
+                    <div class="codeContainer">
+                        <p>> GEOADD places -122.419 37.774 “San Francisco”</p>
+                        <p>> GEOADD places -122.143 37.441 “Palo Alto”</p>
+                        <p>> GEOADD places -122.083 37.386 “Mountain View”</p>
+                        <p>> GEOADD places -121.886 37.338 “San Jose”</p>
+                    </div>
+                    <br>
+                    Since these entities are stored in a sorted set, the ZCARD command would return the total count of spatial entities.
+                    <br>
+                    <br>
+                    <div class="codeContainer black">
+                        <p>> ZCARD <span class="violet">places</span>(integer) 4</p>
+                    </div>
+                    <br>
+                    ZRANGE can be used to list all the entities
+                    <br>
+                    <br>
+                    <div class="codeContainer">
+                        <p class="black">> ZRANGE places 0 -1</p>
+                        <ol>
+                            <li>"San Francisco"</li>
+                            <li>"Mountain View"</li>
+                            <li>"Palo Alto"</li>
+                            <li>"San Jose"</li>
+                        <ol>
+                        
+                    </div>
+                    <br>
+                    Time-series data — traffic data, stock prices, weather and energy measurements, healthcare signals — is essentially data that is continuously generated over time.
+                    <br>
+                    <br>
+                    <strong>Why Use Redis?</strong>
+                    <ul>
+                        <li>
+                            There are plenty of solutions available for implementing spatial searches. Data structures like Quadtree, R-tree, and K-d tree can be used to index the entities.
+                        </li>
+                        <br>
+                        <li>
+                            However, Redis provides an edge when it comes to scalability, performance, and availability. Redis has several advantages over other solutions:
+                        </li>
+                    </ul>
+
+
+                    This time dependency introduces new levels of complexity to the process of synthetic data generation: keeping the trends and correlations across time is just as important as <strong>keeping the correlations between features or attributes</strong> (as we’re used to with tabular data). And the longer the temporal history, the harder it is to preserve those relationships.
+                    <br>
+                    <br>
+                    Over the years, data science teams have been trying to define suitable ways to generate high-quality synthetic time series data, among which Generative Adversarial Networks (GANs) are currently extremely popular.
+                    <br>
+                    <br>
+                    In this piece, we will delve into the peculiarities of a well-humored architecture, DoppelGANger — yes, pun intended — recently added to the ydata-synthetic package and explore how we can use it to generate synthetic data from complex time series datasets.
+                    <br>
+                    <br>
+                    For educational purposes, data-synthetic has been our number one choice and we’ve tested it plenty with tabular data. This time, we’re experimenting with time-series data, using the most recent model for time-series synthetic data generation — DoppelGANger.
+                    <br>
+                    <br>
+                    As you can tell by the (awesome) name, DoppelGANger makes a pun out of “Doppelganger” — a German word that refers to a look-alike or a double of a person — and “GAN”, the artificial intelligence model.
+                    <br>
+                    <br>
+                    Being GAN-based, the same general principles of GANs apply to DoppleGANger: the generator and the discriminator are continuously optimized by comparing the synthetic data (created by the generator) with the real data (which the discriminator or critic tries to distinguish from the synthetic).
+                    Yet, as mentioned earlier, GANs have traditionally struggled with the peculiarities of time-series data:
+                </div>
+                <br>
+                <div class="tags">
+                    <p>Redis</p>
+                    <p>Distributed System</p>
+                    <p>System Design</p>
+                </div>
+                <br>
+                <br>
+            </section>
+            <section class="mainContent blog3" id="blog3">
+                <div class="pageHeading" id="title">
+                    <h1 title="blog3">Write-Heavy Scalable Platform — System Design</h1>
+                    <div class="avatarBlog">
+                        <img class="avatar" src="./images/avatar3.jpeg" alt="userImg">
+                        <p>8min read . Oct 4</p>
+                    </div>
+                </div>
+                <div class="blogText">
+                    As DoorDash made the move from made-to-order restaurant delivery into the Convenience and Grocery (CnG) business, they had to find a way to manage an online inventory per merchant per store that went from tens of items to tens of thousands of items.
+                    <br>
+                    <img class="blogPics" src="./images/systemArch.webp" alt="systemArch">
+                    <br>
+                    <div class="bg-lg">
+                        To solve this scaling problem their team built a write-heavy inventory platform that would be able to keep up with all the changes on the platform.
+                    </div>
+                    <br>
+                    <br>
+                    <strong>What We will Cover here</strong>
+                    <br>
+                    <ol>
+                        <li>Challenges Associated with Supporting CnG Inventory Management</li>
+                        <li>Technical Requirements of Their Ideal Inventory Platform</li>    
+                        <li>Functional Architecture</li>
+                        <li>Incremental Changes to the Solution after the MVP</li>    
+                        — Change Item-level API to Batch API
+                        <br>
+                        — Database Table Optimization
+                        <br>
+                        — Batch the DB Upsert within one 
+                        request to CockroachDB
+                        <li>Conclusion</li>
+                    </ol>
+                    <strong> Requirements of Their Ideal Inventory Platform</strong>
+                    <br>
+                    <ol>
+                        <li>
+                            <strong>High Scalability </strong>— As their business grows, the inventory platform needs to support more items that are added to the system. Frequent updates need to be supported so that inventory freshness is maintained
+                        </li>
+                        <li>
+                            <strong>High Scalability </strong>— their pipeline should be reliable so that all of the valid inventory update requests from merchants should eventually be processed successfully
+                        </li>
+                        <li>
+                            <strong>Low Latency  </strong>— the item data is time-sensitive, especially the price and availability attributes. The gap between receiving data from the merchant and displaying data to the customer should be as small as possible.
+                        </li>
+                        <li>
+                            <strong>High Observability  </strong>— The pipeline should have lots of validations and guardrails.
+                        </li>
+                    </ol>
+                    <br>
+                    <br>
+                    <strong>Functional Architecture</strong>
+                    <br>
+                    <br>
+                    To begin the technical discussion we will start with the high-level architecture of their inventory ingestion pipeline.
+                    <br>
+                    <br>
+                    Figure 1 shows a high-level design of their inventory ingestion pipeline, which is an asynchronous system ingesting inventory from multiple different sources, processing them, and passing them to downstream systems where the view is served to customer-facing entities.
+                    <br>
+                    <br>
+                    <img class="blogPics" src="./images/img1_blog1.webp" alt="architecture design"></img>
+                    In this piece, we will delve into the peculiarities of a well-humored architecture, DoppelGANger — yes, pun intended — recently added to the ydata-synthetic package and explore how we can use it to generate synthetic data from complex time series datasets.
+                    <br>
+                    <br>
+                    <ol>
+                        <li>
+                            <strong>
+                                API controller
+                            </strong>
+                            — their gRPC-based API controller acts as the entry point of inventory data to the platform.
+                        </li>
+                        <li>
+                            <strong>
+                                Raw Feed Persistence
+                            </strong>
+                            — Most of the inventory processing after the API controller is async and is executed via Cadence workflows.                                
+                        </li>
+                        <li>
+                            <strong>Hydration
+                            </strong>
+                            — the detailed view of a store item involves both inventory and catalog attributes. The inventory ingestion pipeline at DoorDash is responsible for hydrating (i.e. enriching) raw inventory information with catalog attributes.
+                        </li>
+                        <li>
+                            <strong>Price Calculation
+                            </strong>
+                            — they also rely on external configuration fetched from a dependent service to perform per-item price calculation as and when required.
+                        </li>
+                        <li>
+                            <strong>Out-of-stock Predictive Classification
+                            </strong>
+                            — implemented a predictive model that learns from historical order and INF (item-not-found) data and classifies whether an item can be available in-store or not.
+                        </li>
+                        <li>
+                            <strong>Guardrails
+                            </strong>
+                            — No pipeline is without errors caused due to code bugs in their own systems and/or issues in upstream systems. The inventory platform needs to establish best-effort guardrails (and alerting mechanisms) that can detect and restrict updates when certain conditions are met.
+                        </li>
+                        <li>
+                            <strong>Observability
+                            </strong>
+                            — It is very important to have full visibility into this pipeline at an item level as well as a store level (aggregated statistics). We need to know if an item was dropped due to some error in the pipeline, as that directly relates to the item not being available on the store page.
+                        </li>
+                    </ol>
+                    At the beginning of the implementation, put effort into creating an exhaustive metrics dashboard, so that when performance issues arise, it is easy to narrow down the bottleneck of the system. In general, having high visibility into the real-time system from the start can be very useful.
+                    <br>
+                    <br>
+                    Save data in a way that can help the read-and-write pattern. Inventory data may not be a flattened list of data — they may have a certain level of hierarchy. They could be saved as item-level or store-level, it is all about determining the read-and-write pattern for the service.
+                    <br>
+                    <br>
+                    Batch whenever possible in API and DB. Most of the time, when we update inventory, we would update a whole store’s or geolocation’s inventory. Either way, there are multiple items to update, so it’s best to try to batch the update instead of updating single items for each request or query.
+                    <br>
+                    <br>
+                    If the business unit allows asynchronous processing, make computations asynchronous and establish a strong SLA for job time per unit (i.e. store or item). Time for single-item processing includes time spent in network communication, which adds up when there are potentially billions of items to process.
+                    <br>
+                    <br>
+                    Instead, if we send the entire store’s inventory via one request, and on the server side use a blob storage to save the request payload, and process it asynchronously, then the client side can save the waiting time and the service can have high throughput.
+                    On this note, also establishes the idea that content will be updated in near-real time instead of real-time. Cadence is a good tool for processing near-real-time jobs and has many built-in features to improve system reliability and efficiency.
+                    <br>
+                    <br>
+                    <div class="tags">
+                        <p>Inventory Management</p>
+                        <p>System Design Interview</p>
+                        <p>Distributed System</p>
+                    </div>
+                    <br>
+                    <br>
+                </div> 
+            </section>
+            <section class="mainContent blog4" id="blog4">
+                <div class="pageHeading" id="title">
+                    <h1 title="blog4">QPM Using Redis — Groupon System Design</h1>
+                    <div class="avatarBlog">
+                        <img class="avatar" src="./images/avatar2.jpg" alt="userImg">
+                        <p>8min read . Jun 16</p>
+                    </div>
+                </div>
+                <div class="blogText">
+                    It’s fascinating to learn about how Groupon leverages Redis to enhance geospatial searches for its users. Utilizing Redis for geospatial indexing and search can significantly optimize the process of finding relevant deals based on location. This approach is critical when dealing with a high volume of queries and a need for low-latency responses.
+                    <br>
+                    <br>
+                    <img class="blogPics" src="./images/img1_blog2.webp" alt="Redis Store">
+                    <br>
+                    <strong>What we will cover here</strong>
+                    <ol>
+                        <li> Introduction</li>
+                        <li>How do Geospatial Queries work in Redis?</li>
+                        <li>How to index spatial entities?</li>
+                        <li>Points to Remember</li>
+                        <li>Why Use Redis?</li>
+                    </ol>
+                    <br>   
+                    <strong> Introduction</strong>
+                    <br>
+                    <br>
+                    Two primary types of geospatial searches are highlighted in this article:
+                    <br>
+                    <br>
+                    Find the Nearest Entity: This search type focuses on identifying the closest geospatial entity to a given location. It’s particularly useful when users want to find the nearest deals or points of interest based on their current location.
+                    <br>
+                    <br>
+                    Find All Nearby Entities within a Radius: This search involves identifying all geospatial entities within a specified distance from a given point. This functionality is valuable for users looking for a broader range of nearby deals or places of interest.
+                    <br>
+                    <br>
+                    <strong>How do Geospatial Queries work in Redis?</strong>
+                    <br>
+                    <ul>
+                        <li>
+                    
+                        Redis provides commands like GEOADD, GEORADIUS, GEORADIUSBYMEMBER, GEOSEARCH, and GEOSEARCHSTORE for geospatial indexing and searching.
+                        The spatial entities are stored in Sorted Sets using the coordinates to form 52-bit integers using the Geohash technique.
+                        </li>
+                        <br>
+                        <li>
+                        Let’s go through an example to see how the spatial entities can be indexed and searched. 
+                        </li>
+                        <br>
+                        <li>
+                        Redis-CLI commands are shown in these examples, though any Redis client can be used.
+                        </li>
+                    </ul>
+                    
+                    For the examples consider four places with the coordinates:
+                    
+                    <ul>
+                        <li>San Francisco (lat: 37.774, lng: -122.419)</li>
+                        <br>
+                        <li>Palo Alto (lat: 37.441, lng: -122.143)</li>
+                        <br>
+                        <li>Mountain View (lat: 37.386, lng: -122.083)</li>
+                        <br>
+                        <li>San Jose (lat: 37.338, lng: -121.886)</li>
+                        <br>
+                    </ul>
+                    <img class="blogPics" src="images/img2_blog2.webp" alt="maps">
+                    <br>
+                    <br>
+                    <strong>How to index spatial entities?</strong>
+                    <br>
+                    <br>
+                    GEOADD command can be used to index spatial entities in Redis. The time complexity for this command is O(log(N)) for each item added, where N is the number of elements in the sorted set.
+                    <br>
+                    <br>
+                    To add these 4 locations to the ‘places’ Redis keys, run the commands:
+                    <br>
+                    <br>
+                    <div class="codeContainer">
+                        <p>> GEOADD places -122.419 37.774 “San Francisco”</p>
+                        <p>> GEOADD places -122.143 37.441 “Palo Alto”</p>
+                        <p>> GEOADD places -122.083 37.386 “Mountain View”</p>
+                        <p>> GEOADD places -121.886 37.338 “San Jose”</p>
+                    </div>
+                    <br>
+                    Since these entities are stored in a sorted set, the ZCARD command would return the total count of spatial entities.
+                    <br>
+                    <br>
+                    <div class="codeContainer black">
+                        <p>> ZCARD <span class="violet">places</span>(integer) 4</p>
+                    </div>
+                    <br>
+                    ZRANGE can be used to list all the entities
+                    <br>
+                    <br>
+                    <div class="codeContainer">
+                        <p class="black">> ZRANGE places 0 -1</p>
+                        <ol>
+                            <li>"San Francisco"</li>
+                            <li>"Mountain View"</li>
+                            <li>"Palo Alto"</li>
+                            <li>"San Jose"</li>
+                        <ol>
+                        
+                    </div>
+                    <br>
+                    Time-series data — traffic data, stock prices, weather and energy measurements, healthcare signals — is essentially data that is continuously generated over time.
+                    <br>
+                    <br>
+                    <strong>Why Use Redis?</strong>
+                    <ul>
+                        <li>
+                            There are plenty of solutions available for implementing spatial searches. Data structures like Quadtree, R-tree, and K-d tree can be used to index the entities.
+                        </li>
+                        <br>
+                        <li>
+                            However, Redis provides an edge when it comes to scalability, performance, and availability. Redis has several advantages over other solutions:
+                        </li>
+                    </ul>
+
+
+                    This time dependency introduces new levels of complexity to the process of synthetic data generation: keeping the trends and correlations across time is just as important as <strong>keeping the correlations between features or attributes</strong> (as we’re used to with tabular data). And the longer the temporal history, the harder it is to preserve those relationships.
+                    <br>
+                    <br>
+                    Over the years, data science teams have been trying to define suitable ways to generate high-quality synthetic time series data, among which Generative Adversarial Networks (GANs) are currently extremely popular.
+                    <br>
+                    <br>
+                    In this piece, we will delve into the peculiarities of a well-humored architecture, DoppelGANger — yes, pun intended — recently added to the ydata-synthetic package and explore how we can use it to generate synthetic data from complex time series datasets.
+                    <br>
+                    <br>
+                    For educational purposes, data-synthetic has been our number one choice and we’ve tested it plenty with tabular data. This time, we’re experimenting with time-series data, using the most recent model for time-series synthetic data generation — DoppelGANger.
+                    <br>
+                    <br>
+                    As you can tell by the (awesome) name, DoppelGANger makes a pun out of “Doppelganger” — a German word that refers to a look-alike or a double of a person — and “GAN”, the artificial intelligence model.
+                    <br>
+                    <br>
+                    Being GAN-based, the same general principles of GANs apply to DoppleGANger: the generator and the discriminator are continuously optimized by comparing the synthetic data (created by the generator) with the real data (which the discriminator or critic tries to distinguish from the synthetic).
+                    Yet, as mentioned earlier, GANs have traditionally struggled with the peculiarities of time-series data:
+                </div>
+                <br>
+                <div class="tags">
+                    <p>Redis</p>
+                    <p>Distributed System</p>
+                    <p>System Design</p>
+                </div>
+                <br>
+                <br>
+            </section>
+            <section class="sidebar">
+                <div class="sidebarHeading"><strong>Blogs</strong></div>
+                <a onclick="navigateToSection('blog1', event)" href="#blog1">DoorDash’s Write-Heavy</a>
+                <a onclick="navigateToSection('blog2', event)" href="#blog2">Groupon System Design</a>
+                <a onclick="navigateToSection('blog3', event)" href="#blog3">Gen AI</a>
+                <a onclick="navigateToSection('blog4', event)" href="#blog4">QPM Using Redis</a>
+            </section>
+        </main>
+        <script src="./scripts/script.js" async defer></script>
+        
+    </body>
+</html>

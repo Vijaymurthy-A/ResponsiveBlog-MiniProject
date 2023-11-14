@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <title>Blog Page</title>
+        <meta name="description" content="This site contains top trending blogs">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="style.css">
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Sofia">
+        <link rel="icon" href="./images/favicon.ico">
+    </head>
+    <body>
+        <header>
+            <nav>
+                <div class="navTitle">
+                     <a href="./index.html">SYSTEM DESIGN</a>
+                </div>
+                <div>
+                    <div class="searchDiv">
+                        <label for="search"></label>
+                        <input class="searchInput" type="search" name="query" id="search" onkeyup='searchQuery()' placeholder="Search Here">
+                        <div class="searchPopup" id="searchPopup">
+                            <!-- Display the search results -->
+                        </div>
+                    </div>
+                </div>
+                <!-- <ul class="navList">
+                    <li> <a href="./index.html">HOME</a></li>
+                    <li>
+                        <div class="navDropdown">
+                            BLOGS
+                            <span class="arrow"></span>
+                            <div id="title" class="dropdown-content">
+                                <a href="./blogs.html" title="blog1">Write-Heavy SD</a>
+                                <a href="./blogs.html" title="blog2">QPM Redis</a>
+                                <a href="./blogs.html" title="blog3">Gen AI</a>
+                                <a href="./blogs.html" title="blog4">System</a>
+                            </div>
+                        </div>
+                    </li>
+                </ul> -->
+            </nav>
+        </header>
+        <main>
+            <div class="indexContainer">
+                <div class="container">
+                    <section class="mainCard">
+                        <div class="mainCardContent">
+                            <p>Mahesh Saini . Oct 4</p>
+                            <a class="mainTitleName" id="title" href="./blogs.html#blog1">
+                                <h3 title="blog1">DoorDash’s Write-Heavy Scalable Inventory Platform — System Design
+                                </h3>
+                            </a>
+                            <p class="shortDescription">
+                                To solve this scaling problem their team built a write-heavy inventory platform that would be able to keep up with all the changes on the platform.
+                            </p>
+                            <div class="mainCardtags">
+                                <p>Inventory Management</p>
+                                <p>System Design Interview</p>
+                                <p>Distributed System</p>
+                            </div>
+                        </div>
+                    </section>
+                    
+                    <section class="tileCard">
+                        <div class="singleTile">
+                            <div class="tileImage tile2"></div>
+                            <p>Jose Stumble . Jun 16</p>
+                            <a class="titleName" id="title" href="./blogs.html#blog2">
+                                <h3 title="blog2">Scaling Millions of Geospatial QPM Using Redis — Groupon System Design</h3>
+                            </a>
+                            <p class="shortDescription">
+                                It’s fascinating to learn about how Groupon leverages Redis to enhance geospatial searches for its users.
+                            </p>
+                            <div class="tags">
+                                <p>Redis</p>
+                                <p>Distributed System</p>
+                                <p>System Design</p>
+                            </div>
+                        </div>
+                        <div class="singleTile">
+                            <div class="tileImage tile3"></div>
+                            <p>Ramesh Babu . Jan 29</p>
+                            <a class="titleName" id="title" href="./blogs.html#blog3">
+                                <h3 title="blog3">Generative AI for AI-Series</h3>
+                            </a>
+                            <p class="shortDescription">
+                                Time-series data — traffic data, stock prices, weather and energy measurements, healthcare signals — is essentially data that is continuously generated over time.
+                            </p>
+                            <div class="tags">
+                                <p>Software Development</p>
+                                <p>AI</p>
+                            </div>
+                        </div>
+                        <div class="singleTile">
+                            <div class="tileImage tile4"></div>
+                            <p>Mark Antony . Mar 6</p>
+                            <a class="titleName" id="title" href="./blogs.html#blog4">
+                                <h3 title="blog3">Scaling Millions of Geospatial QPM Using Redis — Groupon System Design</h3>
+                            </a>
+                            <p class="shortDescription">
+                                It’s fascinating to learn about how Groupon leverages Redis to enhance geospatial searches for its users.
+                            </p>
+                            <div class="tags">
+                                <p>Redis</p>
+                                <p>Distributed System</p>
+                                <p>System Design</p>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </div>
+            <br>
+            <br>
+        </main>
+        <script src="./scripts/script.js" async defer></script>
+        
+    </body>
+</html>
