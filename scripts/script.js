@@ -30,7 +30,7 @@ function searchQuery() {
     results.forEach((value, key) => {
       const div = document.createElement("a");
       div.setAttribute("href", `./blogs.html#${value}`);
-      div.setAttribute("onclick", `navigateToSection("${value}", event)`);
+      // div.setAttribute("onclick", `navigateToSection("${value}", event)`);
       div.innerText = key;
       popupElement.appendChild(div);
     });
