@@ -1,25 +1,5 @@
 console.log("I'm from script.js");
 
-// Used sessionStorage to keep track on which title was clicked by the user
-// const nodes = document.querySelectorAll("#title");
-// for (const node of nodes) {
-//   node.addEventListener("click", function (event) {
-//     sessionStorage.setItem("displayBlog", event.target.title);
-//   });
-// }
-
-function navigateToSection(sectionId, event) {
-  const section = document.getElementById(sectionId);
-  if (section) {
-    event.preventDefault();
-    console.log(section.offsetTop);
-    // Scroll to the section with an animated behavior
-    window.scrollTo({
-      top: section.offsetTop,
-    });
-  }
-}
-
 let topics = new Map();
 document
   .querySelectorAll("#title > h3")
@@ -71,3 +51,24 @@ document.addEventListener("click", (event) => {
     }
   }
 });
+
+// With the help of window.scrollTo we can achieve client side navigation also
+// function navigateToSection(sectionId, event) {
+//   const section = document.getElementById(sectionId);
+//   if (section) {
+//     event.preventDefault();
+//     console.log(section.offsetTop);
+//     // Scroll to the section with an animated behavior
+//     window.scrollTo({
+//       top: section.offsetTop,
+//     });
+//   }
+// }
+
+// Used sessionStorage to keep track on which title was clicked by the user
+// const nodes = document.querySelectorAll("#title");
+// for (const node of nodes) {
+//   node.addEventListener("click", function (event) {
+//     sessionStorage.setItem("displayBlog", event.target.title);
+//   });
+// }
